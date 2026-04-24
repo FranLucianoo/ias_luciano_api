@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  tests-y-analisis:
+    name: Unit Tests, Integration Tests y Bandit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias de desarrollo
+        run: pip install -r requirements-dev.txt
+
+      - name: Ejecutar tests unitarios
+        run: pytest tests/unit/ -v
+
+      - name: Ejecutar tests de integracion
+        run: pytest tests/integration/ -v
+
+      - name: Analisis de seguridad con Bandit
+        run: bandit -r app/ -ll
+
+  tests-seguridad:
+    name: Security Tests (solo PR a main)
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias de desarrollo
+        run: pip install -r requirements-dev.txt
+
+      - name: Ejecutar tests de seguridad
+        run: pytest tests/security/ -v

@@ -1,0 +1,11 @@
+.env
+.env.example
+__pycache__/
+*.pyc
+*.db
+.pytest_cache/
+instance/
+.claude/
+*.pptx
+CLAUDE.md
+plan_configuracion.html

@@ -1,0 +1,35 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [develop, main]
+
+jobs:
+  deploy-dev:
+    name: Deploy a DEV
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Trigger deploy en Render DEV
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_DEV }}"
+
+  deploy-qa:
+    name: Deploy a QA
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Trigger deploy en Render QA
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_QA }}"
+
+  deploy-prd:
+    name: Deploy a PRD (aprobacion manual requerida)
+    runs-on: ubuntu-latest
+    needs: [deploy-qa]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Trigger deploy en Render PRD
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PRD }}"
