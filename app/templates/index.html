@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IAS - ABM Usuarios</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f4f6f9; color: #333; }
+    header { background: #2c3e50; color: white; padding: 16px 32px; }
+    header h1 { font-size: 1.4rem; }
+    header span { font-size: 0.85rem; opacity: 0.7; }
+    .container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+    .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    h2 { font-size: 1.1rem; margin-bottom: 16px; color: #2c3e50; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+    input[type="text"], input[type="email"] {
+      width: 100%; padding: 8px 10px; border: 1px solid #ccc;
+      border-radius: 4px; font-size: 0.9rem;
+    }
+    input[type="text"]:focus, input[type="email"]:focus { outline: none; border-color: #2980b9; }
+    label { font-size: 0.8rem; color: #666; display: block; margin-bottom: 4px; }
+    .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+    .btn-primary { background: #2980b9; color: white; }
+    .btn-primary:hover { background: #2471a3; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-warning:hover { background: #d68910; }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { background: #f0f3f7; text-align: left; padding: 10px 12px; font-size: 0.8rem; color: #666; border-bottom: 2px solid #e0e0e0; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+    tr:hover td { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+    .badge-active { background: #d5f5e3; color: #1e8449; }
+    .badge-inactive { background: #fde8e8; color: #c0392b; }
+    .msg { padding: 10px 14px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 16px; display: none; }
+    .msg-success { background: #d5f5e3; color: #1e8449; }
+    .msg-error { background: #fde8e8; color: #c0392b; }
+    .actions { display: flex; gap: 6px; }
+    #edit-form { display: none; }
+    .edit-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: 12px; align-items: end; }
+    .empty { text-align: center; padding: 32px; color: #aaa; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>IAS — ABM Usuarios</h1>
+  <span>API de gestión de usuarios</span>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Nuevo usuario</h2>
+    <div id="msg-create" class="msg"></div>
+    <div class="form-grid">
+      <div>
+        <label>Nombre</label>
+        <input type="text" id="nuevo-nombre" placeholder="Juan">
+      </div>
+      <div>
+        <label>Apellido</label>
+        <input type="text" id="nuevo-apellido" placeholder="Pérez">
+      </div>
+      <div>
+        <label>Email</label>
+        <input type="email" id="nuevo-email" placeholder="juan@example.com">
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="crearUsuario()">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Usuarios</h2>
+    <div id="msg-table" class="msg"></div>
+
+    <div id="edit-form" class="card" style="background:#fffbe6; box-shadow:none; border:1px solid #f0d060; margin-bottom:16px;">
+      <h2>Editar usuario</h2>
+      <div class="edit-grid">
+        <div>
+          <label>Nombre</label>
+          <input type="text" id="edit-nombre">
+        </div>
+        <div>
+          <label>Apellido</label>
+          <input type="text" id="edit-apellido">
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" id="edit-email">
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="guardarEdicion()">Guardar</button>
+        </div>
+        <div>
+          <button class="btn" style="background:#ccc;" onclick="cancelarEdicion()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <table id="tabla-usuarios">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nombre</th>
+          <th>Apellido</th>
+          <th>Email</th>
+          <th>Estado</th>
+          <th>Creado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty" class="empty" style="display:none;">No hay usuarios registrados.</div>
+  </div>
+
+</div>
+
+<script>
+  let editandoId = null;
+
+  async function cargarUsuarios() {
+    const res = await fetch('/usuarios');
+    const usuarios = await res.json();
+    const tbody = document.getElementById('tbody');
+    const empty = document.getElementById('empty');
+    tbody.innerHTML = '';
+    if (usuarios.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    usuarios.forEach(u => {
+      const fecha = u.creado_en ? new Date(u.creado_en).toLocaleDateString('es-AR') : '-';
+      const badge = u.activo
+        ? '<span class="badge badge-active">Activo</span>'
+        : '<span class="badge badge-inactive">Inactivo</span>';
+      tbody.innerHTML += `
+        <tr id="row-${u.id}">
+          <td>${u.id}</td>
+          <td>${u.nombre}</td>
+          <td>${u.apellido}</td>
+          <td>${u.email}</td>
+          <td>${badge}</td>
+          <td>${fecha}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-warning btn-sm" onclick="iniciarEdicion(${u.id}, '${u.nombre}', '${u.apellido}', '${u.email}')">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarUsuario(${u.id})">Eliminar</button>
+              <button class="btn btn-sm" style="background:${u.activo ? '#bdc3c7' : '#27ae60'};color:white;"
+                onclick="toggleActivo(${u.id}, ${u.activo})">
+                ${u.activo ? 'Desactivar' : 'Activar'}
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    });
+  }
+
+  function mostrarMsg(id, texto, tipo) {
+    const el = document.getElementById(id);
+    el.textContent = texto;
+    el.className = `msg msg-${tipo}`;
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }
+
+  async function crearUsuario() {
+    const nombre = document.getElementById('nuevo-nombre').value.trim();
+    const apellido = document.getElementById('nuevo-apellido').value.trim();
+    const email = document.getElementById('nuevo-email').value.trim();
+
+    if (!nombre || !apellido || !email) {
+      mostrarMsg('msg-create', 'Completá todos los campos.', 'error');
+      return;
+    }
+
+    const res = await fetch('/usuarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, apellido, email })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      mostrarMsg('msg-create', 'Usuario creado correctamente.', 'success');
+      document.getElementById('nuevo-nombre').value = '';
+      document.getElementById('nuevo-apellido').value = '';
+      document.getElementById('nuevo-email').value = '';
+      cargarUsuarios();
+    } else {
+      mostrarMsg('msg-create', data.error || 'Error al crear usuario.', 'error');
+    }
+  }
+
+  function iniciarEdicion(id, nombre, apellido, email) {
+    editandoId = id;
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-apellido').value = apellido;
+    document.getElementById('edit-email').value = email;
+    document.getElementById('edit-form').style.display = 'block';
+    document.getElementById('edit-form').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function cancelarEdicion() {
+    editandoId = null;
+    document.getElementById('edit-form').style.display = 'none';
+  }
+
+  async function guardarEdicion() {
+    const nombre = document.getElementById('edit-nombre').value.trim();
+    const apellido = document.getElementById('edit-apellido').value.trim();
+    const email = document.getElementById('edit-email').value.trim();
+
+    const res = await fetch(`/usuarios/${editandoId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, apellido, email })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      mostrarMsg('msg-table', 'Usuario actualizado correctamente.', 'success');
+      cancelarEdicion();
+      cargarUsuarios();
+    } else {
+      mostrarMsg('msg-table', data.error || 'Error al actualizar.', 'error');
+    }
+  }
+
+  async function eliminarUsuario(id) {
+    if (!confirm('¿Eliminar este usuario?')) return;
+    const res = await fetch(`/usuarios/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      mostrarMsg('msg-table', 'Usuario eliminado.', 'success');
+      cargarUsuarios();
+    }
+  }
+
+  async function toggleActivo(id, estadoActual) {
+    const res = await fetch(`/usuarios/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activo: !estadoActual })
+    });
+    if (res.ok) cargarUsuarios();
+  }
+
+  cargarUsuarios();
+</script>
+</body>
+</html>
